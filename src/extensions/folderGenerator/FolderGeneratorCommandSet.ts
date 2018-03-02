@@ -19,9 +19,11 @@ import {
   Dialog 
 } from '@microsoft/sp-dialog';
 
-import {
-  SPHttpClient,
-  SPHttpClientResponse
+import { 
+  SPHttpClient, 
+  SPHttpClientResponse, 
+  SPHttpClientConfiguration,
+  ISPHttpClientOptions 
 } from '@microsoft/sp-http';
 
 import * as strings from 'FolderGeneratorCommandSetStrings';
@@ -45,7 +47,6 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
   private selectedItemId:string; 
   private folderName:string;
 
-
   @override
   public onInit(): Promise<void> {
     Log.info(LOG_SOURCE, 'Initialized FolderGeneratorCommandSet');
@@ -66,11 +67,56 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
     }
   }
 
+  private GetList(title:string, description:string) {
+      return `{ Title: '${title}', Description: '${description}', BaseTemplate: 100 }`;
+  }
+
+  private GetDocLibrary(title:string, description:string) {
+    return `{ Title: '${title}', Description: '${description}', BaseTemplate: 101 }`;
+  }
+
+  private DoSomething() {
+    // let html: string = '';
+    // this.context.spHttpClient.get(
+    //   this.context.pageContext.web.absoluteUrl + `/_api/web/lists?$filter=Hidden eq false`, SPHttpClient.configurations.v1)
+    //   .then((response: SPHttpClientResponse) => {
+    //     response.json().then((listsObjects: any) => {
+    //       listsObjects.value.forEach(listObject => {
+    //         html += `
+    //                 <ul>
+    //                     <li>
+    //                         <span class="ms-font-l">${listObject.Title}</span>
+    //                     </li>
+    //                 </ul>`;
+    //       });
+    //       this.domElement.querySelector('#lists').innerHTML = html;
+    //     });
+    //   }); 
+
+    let spOpts: ISPHttpClientOptions = {
+
+      body: this.GetDocLibrary(this.folderName, "A test folder")
+
+    };
+
+    this.context.spHttpClient.post(
+      this.context.pageContext.web.absoluteUrl + `/_api/web/lists`,
+      SPHttpClient.configurations.v1,
+      spOpts
+    ).then((response:SPHttpClientResponse) => {
+        response.json().then((responseJSON:JSON) => {
+          console.log(responseJSON);
+        })
+    });
+  }
+
+
   @override
   public onExecute(event: IListViewCommandSetExecuteEventParameters): void {
     switch (event.itemId) {
       case 'COMMAND_1':
         Dialog.alert(`${this.properties.sampleTextOne} + Id of the list: ${this.listId} + Folder Name: ${this.folderName}`);
+        this.DoSomething();
         break;
       case 'COMMAND_2':
         Dialog.alert(`${this.properties.sampleTextTwo}`);
