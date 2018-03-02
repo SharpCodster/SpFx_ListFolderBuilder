@@ -1,12 +1,28 @@
-import { override } from '@microsoft/decorators';
-import { Log } from '@microsoft/sp-core-library';
+import { 
+  override 
+} from '@microsoft/decorators';
+
+import { 
+  Log,
+  Environment,
+  EnvironmentType
+} from '@microsoft/sp-core-library';
+
 import {
   BaseListViewCommandSet,
   Command,
   IListViewCommandSetListViewUpdatedParameters,
   IListViewCommandSetExecuteEventParameters
 } from '@microsoft/sp-listview-extensibility';
-import { Dialog } from '@microsoft/sp-dialog';
+
+import { 
+  Dialog 
+} from '@microsoft/sp-dialog';
+
+import {
+  SPHttpClient,
+  SPHttpClientResponse
+} from '@microsoft/sp-http';
 
 import * as strings from 'FolderGeneratorCommandSetStrings';
 
@@ -25,6 +41,11 @@ const LOG_SOURCE: string = 'FolderGeneratorCommandSet';
 
 export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IFolderGeneratorCommandSetProperties> {
 
+  private listId:string;
+  private selectedItemId:string; 
+  private folderName:string;
+
+
   @override
   public onInit(): Promise<void> {
     Log.info(LOG_SOURCE, 'Initialized FolderGeneratorCommandSet');
@@ -37,6 +58,11 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
     if (compareOneCommand) {
       // This command should be hidden unless exactly one row is selected.
       compareOneCommand.visible = event.selectedRows.length === 1;
+
+      if (compareOneCommand.visible) {
+        this.listId =  this.context.pageContext.list.id.toString();
+        this.folderName = event.selectedRows[0].getValueByName("Title");
+      }
     }
   }
 
@@ -44,7 +70,7 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
   public onExecute(event: IListViewCommandSetExecuteEventParameters): void {
     switch (event.itemId) {
       case 'COMMAND_1':
-        Dialog.alert(`${this.properties.sampleTextOne}`);
+        Dialog.alert(`${this.properties.sampleTextOne} + Id of the list: ${this.listId} + Folder Name: ${this.folderName}`);
         break;
       case 'COMMAND_2':
         Dialog.alert(`${this.properties.sampleTextTwo}`);
