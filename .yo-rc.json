@@ -1,0 +1,8 @@
+{
+  "@microsoft/generator-sharepoint": {
+    "version": "1.4.1",
+    "libraryName": "sp-fx-list-folder-builder",
+    "libraryId": "397cacf9-b778-4460-94f2-f7d61b4d5458",
+    "environment": "spo"
+  }
+}
