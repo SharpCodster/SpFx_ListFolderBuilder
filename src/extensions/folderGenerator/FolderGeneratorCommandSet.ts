@@ -67,36 +67,38 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
     }
   }
 
-  private GetList(title:string, description:string) {
-      return `{ Title: '${title}', Description: '${description}', BaseTemplate: 100 }`;
+  @override
+  public onExecute(event: IListViewCommandSetExecuteEventParameters): void {
+    switch (event.itemId) {
+      case 'COMMAND_1':
+        //Dialog.alert(`${this.properties.sampleTextOne} + Id of the list: ${this.listId} + Folder Name: ${this.folderName}`);
+        this.CheckListExistance();
+        break;
+      case 'COMMAND_2':
+        Dialog.alert(`${this.properties.sampleTextTwo}`);
+        break;
+      default:
+        throw new Error('Unknown command');
+    }
   }
 
-  private GetDocLibrary(title:string, description:string) {
-    return `{ Title: '${title}', Description: '${description}', BaseTemplate: 101 }`;
+  private CheckListExistance() : void {
+    this.context.spHttpClient.get(
+      this.context.pageContext.web.absoluteUrl + `/_api/web/lists/GetByTitle('${this.folderName}')`, SPHttpClient.configurations.v1)
+      .then((response: SPHttpClientResponse) => {
+        response.json().then((listObject:any) => {    
+          if (listObject.hasOwnProperty("error") && listObject.error.code == "-1, System.ArgumentException") {
+            this.CreateLibrary();
+          } else {
+            Dialog.alert(`The List "${this.folderName}" alredy exists.`);
+          }
+        });
+      }); 
   }
 
-  private DoSomething() {
-    // let html: string = '';
-    // this.context.spHttpClient.get(
-    //   this.context.pageContext.web.absoluteUrl + `/_api/web/lists?$filter=Hidden eq false`, SPHttpClient.configurations.v1)
-    //   .then((response: SPHttpClientResponse) => {
-    //     response.json().then((listsObjects: any) => {
-    //       listsObjects.value.forEach(listObject => {
-    //         html += `
-    //                 <ul>
-    //                     <li>
-    //                         <span class="ms-font-l">${listObject.Title}</span>
-    //                     </li>
-    //                 </ul>`;
-    //       });
-    //       this.domElement.querySelector('#lists').innerHTML = html;
-    //     });
-    //   }); 
-
+  private CreateLibrary() : void {
     let spOpts: ISPHttpClientOptions = {
-
-      body: this.GetDocLibrary(this.folderName, "A test folder")
-
+      body: this.GetDocLibrary(this.folderName, "A document library")
     };
 
     this.context.spHttpClient.post(
@@ -110,19 +112,12 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
     });
   }
 
-
-  @override
-  public onExecute(event: IListViewCommandSetExecuteEventParameters): void {
-    switch (event.itemId) {
-      case 'COMMAND_1':
-        Dialog.alert(`${this.properties.sampleTextOne} + Id of the list: ${this.listId} + Folder Name: ${this.folderName}`);
-        this.DoSomething();
-        break;
-      case 'COMMAND_2':
-        Dialog.alert(`${this.properties.sampleTextTwo}`);
-        break;
-      default:
-        throw new Error('Unknown command');
-    }
+  private GetList(title:string, description:string) : string {
+    return `{ Title: '${title}', Description: '${description}', BaseTemplate: 100 }`;
   }
+
+  private GetDocLibrary(title:string, description:string) : string {
+    return `{ Title: '${title}', Description: '${description}', BaseTemplate: 101 }`;
+  }
+
 }
