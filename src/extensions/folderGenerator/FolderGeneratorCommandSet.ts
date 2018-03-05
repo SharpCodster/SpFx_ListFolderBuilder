@@ -52,6 +52,15 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
   @override
   public onInit(): Promise<void> {
     Log.info(LOG_SOURCE, 'Initialized FolderGeneratorCommandSet');
+    pnp.setup({
+      defaultCachingStore: "session", // or "local"
+      defaultCachingTimeoutSeconds: 600,
+      globalCacheDisable: false // or true to disable caching in case of debugging/testing
+    });
+
+    pnp.sp.web.roleDefinitions.filter('').usingCaching().get().then(r => { console.log("Roles Loaded") });
+    pnp.sp.web.siteGroups.filter('').usingCaching().get().then(r => { console.log("Groups Loaded") });
+
     return Promise.resolve();
   }
 
@@ -98,12 +107,28 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
   }
 
   private CreateLibrary() : void {
+
     pnp.sp.web.lists.ensure(this.libraryName, "A document library", 101).then(
       (value: ListEnsureResult) => { 
-        console.log(value.created); 
-        console.log(value.list.toUrl());
-        console.log(value.data);
+        console.log("list created"); 
+
         if (value.created) {
+          value.list.breakRoleInheritance(false, false).then(brk => { 
+            pnp.sp.web.roleDefinitions.getByName('Read').usingCaching().get().then(roleRead => {
+              pnp.sp.web.roleDefinitions.getByName('Edit').usingCaching().get().then(roleEdit=> {
+                pnp.sp.web.siteGroups.getByName('All').usingCaching().get().then(group => {
+                  value.list.roleAssignments.add(group.Id, roleEdit.Id).then(h => { console.log("Added Role"); });
+                });
+                pnp.sp.web.siteGroups.getByName('Area North West').usingCaching().get().then(group => {
+                  value.list.roleAssignments.add(group.Id, roleRead.Id).then(h => { console.log("Added Role"); });
+                });
+                pnp.sp.web.siteGroups.getByName('HR').usingCaching().get().then(group => {
+                  value.list.roleAssignments.add(group.Id, roleRead.Id).then(h => { console.log("Added Role"); });
+                });
+              });
+            });
+          });
+
           this.CreateFolders();
         } else {
           Dialog.alert(`The List "${this.libraryName}" has a problem.`);
@@ -121,8 +146,19 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
     pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/First Folder`);
     pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/Second Folder`);
     pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/First Folder/ComplexFolder`);
+
+
   
     batch.execute().then(d => console.log("Done"));
   }
+}
 
+class KeyValue { 
+  key: string; 
+  value: string; 
+   
+  constructor(key: string, value: string) { 
+      this.key = key; 
+      this.value = value; 
+  } 
 }
