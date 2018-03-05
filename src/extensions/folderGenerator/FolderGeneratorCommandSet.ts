@@ -45,7 +45,7 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
 
   private listId:string;
   private selectedItemId:string; 
-  private folderName:string;
+  private libraryName:string;
 
   @override
   public onInit(): Promise<void> {
@@ -62,7 +62,7 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
 
       if (compareOneCommand.visible) {
         this.listId =  this.context.pageContext.list.id.toString();
-        this.folderName = event.selectedRows[0].getValueByName("Title");
+        this.libraryName = event.selectedRows[0].getValueByName("Title");
       }
     }
   }
@@ -71,11 +71,11 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
   public onExecute(event: IListViewCommandSetExecuteEventParameters): void {
     switch (event.itemId) {
       case 'COMMAND_1':
-        //Dialog.alert(`${this.properties.sampleTextOne} + Id of the list: ${this.listId} + Folder Name: ${this.folderName}`);
         this.CheckListExistance();
         break;
       case 'COMMAND_2':
         Dialog.alert(`${this.properties.sampleTextTwo}`);
+        this.CreateFolder();
         break;
       default:
         throw new Error('Unknown command');
@@ -84,13 +84,13 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
 
   private CheckListExistance() : void {
     this.context.spHttpClient.get(
-      this.context.pageContext.web.absoluteUrl + `/_api/web/lists/GetByTitle('${this.folderName}')`, SPHttpClient.configurations.v1)
+      this.context.pageContext.web.absoluteUrl + `/_api/web/lists/GetByTitle('${this.libraryName}')`, SPHttpClient.configurations.v1)
       .then((response: SPHttpClientResponse) => {
         response.json().then((listObject:any) => {    
           if (listObject.hasOwnProperty("error") && listObject.error.code == "-1, System.ArgumentException") {
             this.CreateLibrary();
           } else {
-            Dialog.alert(`The List "${this.folderName}" alredy exists.`);
+            Dialog.alert(`The List "${this.libraryName}" alredy exists.`);
           }
         });
       }); 
@@ -98,7 +98,7 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
 
   private CreateLibrary() : void {
     let spOpts: ISPHttpClientOptions = {
-      body: this.GetDocLibrary(this.folderName, "A document library")
+      body: this.GetDocLibrary(this.libraryName, "A document library")
     };
 
     this.context.spHttpClient.post(
@@ -108,6 +108,7 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
     ).then((response:SPHttpClientResponse) => {
         response.json().then((responseJSON:JSON) => {
           console.log(responseJSON);
+          this.CreateFolder();
         })
     });
   }
@@ -118,6 +119,30 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
 
   private GetDocLibrary(title:string, description:string) : string {
     return `{ Title: '${title}', Description: '${description}', BaseTemplate: 101 }`;
+  }
+
+
+  private CreateFolder() : void {
+
+    let relativeUrl = `/matteoDev/${this.libraryName}/First Folder`;
+
+    let spOpts: ISPHttpClientOptions = {
+      body: `{ { type: 'SP.Folder' }, ServerRelativeUrl: '${relativeUrl}' }`
+    };
+
+    this.context.spHttpClient.post(
+      this.context.pageContext.web.absoluteUrl + `/_api/web/folders`,
+      SPHttpClient.configurations.v1,
+      spOpts
+    ).then((response:SPHttpClientResponse) => {
+        response.json().then((responseJSON:JSON) => {
+          console.log(spOpts.body);
+          console.log(response.headers);
+          console.log(response.body);
+          console.log(response.bodyUsed);
+          console.log(responseJSON);
+        })
+    });
   }
 
 }
