@@ -1,3 +1,5 @@
+import pnp, { List, ListEnsureResult, ItemAddResult, FieldAddResult, FolderAddResult, ListAddResult } from "sp-pnp-js";
+
 import { 
   override 
 } from '@microsoft/decorators';
@@ -74,8 +76,7 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
         this.CheckListExistance();
         break;
       case 'COMMAND_2':
-        Dialog.alert(`${this.properties.sampleTextTwo}`);
-        this.CreateFolder();
+        this.CreateFolders();
         break;
       default:
         throw new Error('Unknown command');
@@ -97,52 +98,31 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
   }
 
   private CreateLibrary() : void {
-    let spOpts: ISPHttpClientOptions = {
-      body: this.GetDocLibrary(this.libraryName, "A document library")
-    };
-
-    this.context.spHttpClient.post(
-      this.context.pageContext.web.absoluteUrl + `/_api/web/lists`,
-      SPHttpClient.configurations.v1,
-      spOpts
-    ).then((response:SPHttpClientResponse) => {
-        response.json().then((responseJSON:JSON) => {
-          console.log(responseJSON);
-          this.CreateFolder();
-        })
-    });
+    pnp.sp.web.lists.ensure(this.libraryName, "A document library", 101).then(
+      (value: ListEnsureResult) => { 
+        console.log(value.created); 
+        console.log(value.list.toUrl());
+        console.log(value.data);
+        if (value.created) {
+          this.CreateFolders();
+        } else {
+          Dialog.alert(`The List "${this.libraryName}" has a problem.`);
+        }
+      }, 
+      (error: any) => { 
+        console.log(error);
+      });
   }
 
-  private GetList(title:string, description:string) : string {
-    return `{ Title: '${title}', Description: '${description}', BaseTemplate: 100 }`;
-  }
+  private CreateFolders() : void {
 
-  private GetDocLibrary(title:string, description:string) : string {
-    return `{ Title: '${title}', Description: '${description}', BaseTemplate: 101 }`;
-  }
+    let batch = pnp.sp.web.createBatch();
 
-
-  private CreateFolder() : void {
-
-    let relativeUrl = `/matteoDev/${this.libraryName}/First Folder`;
-
-    let spOpts: ISPHttpClientOptions = {
-      body: `{ { type: 'SP.Folder' }, ServerRelativeUrl: '${relativeUrl}' }`
-    };
-
-    this.context.spHttpClient.post(
-      this.context.pageContext.web.absoluteUrl + `/_api/web/folders`,
-      SPHttpClient.configurations.v1,
-      spOpts
-    ).then((response:SPHttpClientResponse) => {
-        response.json().then((responseJSON:JSON) => {
-          console.log(spOpts.body);
-          console.log(response.headers);
-          console.log(response.body);
-          console.log(response.bodyUsed);
-          console.log(responseJSON);
-        })
-    });
+    pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/First Folder`);
+    pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/Second Folder`);
+    pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/First Folder/ComplexFolder`);
+  
+    batch.execute().then(d => console.log("Done"));
   }
 
 }
