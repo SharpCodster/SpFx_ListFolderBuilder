@@ -1,4 +1,4 @@
-import pnp, { List, ListEnsureResult, ItemAddResult, FieldAddResult, FolderAddResult, ListAddResult } from "sp-pnp-js";
+import pnp, { List, ListEnsureResult, ItemAddResult, FieldAddResult, FolderAddResult, ListAddResult, PermissionKind, Item, Items } from "sp-pnp-js";
 
 import { 
   override 
@@ -85,7 +85,9 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
         this.CheckListExistance();
         break;
       case 'COMMAND_2':
-        this.CreateFolders();
+        pnp.sp.web.lists.getByTitle(this.libraryName).get().then((lista:List) => {
+          this.AssignSecurityToFolders(lista);
+        });
         break;
       default:
         throw new Error('Unknown command');
@@ -107,29 +109,22 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
   }
 
   private CreateLibrary() : void {
-
     pnp.sp.web.lists.ensure(this.libraryName, "A document library", 101).then(
       (value: ListEnsureResult) => { 
-        console.log("list created"); 
-
+        console.log(`List ${this.libraryName} created`); 
         if (value.created) {
-          value.list.breakRoleInheritance(false, false).then(brk => { 
-            pnp.sp.web.roleDefinitions.getByName('Read').usingCaching().get().then(roleRead => {
-              pnp.sp.web.roleDefinitions.getByName('Edit').usingCaching().get().then(roleEdit=> {
-                pnp.sp.web.siteGroups.getByName('All').usingCaching().get().then(group => {
-                  value.list.roleAssignments.add(group.Id, roleEdit.Id).then(h => { console.log("Added Role"); });
-                });
-                pnp.sp.web.siteGroups.getByName('Area North West').usingCaching().get().then(group => {
-                  value.list.roleAssignments.add(group.Id, roleRead.Id).then(h => { console.log("Added Role"); });
-                });
-                pnp.sp.web.siteGroups.getByName('HR').usingCaching().get().then(group => {
-                  value.list.roleAssignments.add(group.Id, roleRead.Id).then(h => { console.log("Added Role"); });
-                });
-              });
-            });
-          });
+          let batch = pnp.sp.web.createBatch();
 
-          this.CreateFolders();
+          pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/First Folder`).then(h => { console.log(`Added: ${h.folder.toUrl()}`); });
+          pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/Second Folder`).then(h => { console.log(`Added: ${h.folder.toUrl()}`); });
+          pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/First Folder/ComplexFolder`).then(h => { console.log(`Added: ${h.folder.toUrl()}`); });
+          pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/First Folder/ComplexFolder Revenge`).then(h => { console.log(`Added: ${h.folder.toUrl()}`); });
+          pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/First Folder/ComplexFolder/Sticazzi`).then(h => { console.log(`Added: ${h.folder.toUrl()}`); });
+
+          batch.execute().then(d => { 
+            console.log("Created All Folders");
+            this.AssignSecurityToFolders(value.list);
+          });
         } else {
           Dialog.alert(`The List "${this.libraryName}" has a problem.`);
         }
@@ -139,26 +134,52 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
       });
   }
 
-  private CreateFolders() : void {
+  private AssignSecurityToFolders(lista:List) : void {
+    let batchBreakRole = pnp.sp.web.createBatch();
 
-    let batch = pnp.sp.web.createBatch();
+    lista.inBatch(batchBreakRole).breakRoleInheritance(false, false).then(brk => { console.log(`Broke Role Inherithance of the list`); });
+    lista.items.getById(1).inBatch(batchBreakRole).breakRoleInheritance(false, false).then(brk => { console.log(`Broke Role Inherithance of the folder with id [1]`); });
+    lista.items.getById(2).inBatch(batchBreakRole).breakRoleInheritance(false, false).then(brk => { console.log(`Broke Role Inherithance of the folder with id [2]`); });
+    lista.items.getById(3).inBatch(batchBreakRole).breakRoleInheritance(false, false).then(brk => { console.log(`Broke Role Inherithance of the folder with id [3]`); });
+    lista.items.getById(4).inBatch(batchBreakRole).breakRoleInheritance(false, false).then(brk => { console.log(`Broke Role Inherithance of the folder with id [4]`); });
+    lista.items.getById(5).inBatch(batchBreakRole).breakRoleInheritance(false, false).then(brk => { console.log(`Broke Role Inherithance of the folder with id [5]`); });
+    
+    batchBreakRole.execute().then(d => { 
+      console.log(`All Role Inherithance Broke`);
 
-    pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/First Folder`);
-    pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/Second Folder`);
-    pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/First Folder/ComplexFolder`);
+      pnp.sp.web.roleDefinitions.getByName('Read').usingCaching().get().then(roleRead => {
+        pnp.sp.web.roleDefinitions.getByName('Edit').usingCaching().get().then(roleEdit=> {
+          pnp.sp.web.siteGroups.getByName('All AM').usingCaching().get().then(group_All_AM => {
+            pnp.sp.web.siteGroups.getByName('SG Area North West').usingCaching().get().then(group_SG_Area_NW => {
+              pnp.sp.web.siteGroups.getByName('CG HR').usingCaching().get().then(group_CG_HR => {
+                
+                let batchSecurities = pnp.sp.web.createBatch();
+                
+                lista.roleAssignments.inBatch(batchSecurities).add(group_All_AM.Id, roleEdit.Id).then(h => { console.log(`Added group [${group_All_AM.LoginName}] with role [${roleEdit.Name}]`); });
+                lista.roleAssignments.inBatch(batchSecurities).add(group_SG_Area_NW.Id, roleRead.Id).then(h => { console.log(`Added group [${group_SG_Area_NW.LoginName}] with role [${roleEdit.Name}]`); });
+                lista.roleAssignments.inBatch(batchSecurities).add(group_CG_HR .Id, roleRead.Id).then(h => { console.log(`Added group [${group_CG_HR .LoginName}] with role [${roleEdit.Name}]`); });
+                
+                lista.items.getById(1).roleAssignments.inBatch(batchSecurities).add(group_All_AM.Id, roleEdit.Id).then(h => { console.log(`Added group [${group_All_AM.LoginName}] with role [${roleEdit.Name}]`); });
+                lista.items.getById(1).roleAssignments.inBatch(batchSecurities).add(group_CG_HR .Id, roleEdit.Id).then(h => { console.log(`Added group [${group_CG_HR .LoginName}] with role [${roleRead.Name}]`); });
+                lista.items.getById(1).roleAssignments.inBatch(batchSecurities).add(group_SG_Area_NW.Id, roleRead.Id).then(h => { console.log(`Added group [${group_SG_Area_NW.LoginName}] with role [${roleEdit.Name}]`); })
+              
+                lista.items.getById(2).roleAssignments.inBatch(batchSecurities).add(group_All_AM .Id, roleEdit.Id).then(h => { console.log(`Added group [${group_CG_HR .LoginName}] with role [${roleEdit.Name}]`); });
+                
+                lista.items.getById(3).roleAssignments.inBatch(batchSecurities).add(group_CG_HR .Id, roleEdit.Id).then(h => { console.log(`Added group [${group_CG_HR .LoginName}] with role [${roleRead.Name}]`); });
+                lista.items.getById(3).roleAssignments.inBatch(batchSecurities).add(group_SG_Area_NW.Id, roleRead.Id).then(h => { console.log(`Added group [${group_SG_Area_NW.LoginName}] with role [${roleEdit.Name}]`); })
+              
+                lista.items.getById(4).roleAssignments.inBatch(batchSecurities).add(group_All_AM .Id, roleEdit.Id).then(h => { console.log(`Added group [${group_CG_HR .LoginName}] with role [${roleEdit.Name}]`); });
+                
+                lista.items.getById(5).roleAssignments.inBatch(batchSecurities).add(group_CG_HR .Id, roleEdit.Id).then(h => { console.log(`Added group [${group_CG_HR .LoginName}] with role [${roleEdit.Name}]`); });
 
-
-  
-    batch.execute().then(d => console.log("Done"));
+                batchSecurities.execute().then(d => { 
+                  console.log("End sercurity assignemnts"); 
+                });
+              });
+            });
+          });
+        });
+      });
+    });
   }
-}
-
-class KeyValue { 
-  key: string; 
-  value: string; 
-   
-  constructor(key: string, value: string) { 
-      this.key = key; 
-      this.value = value; 
-  } 
 }
