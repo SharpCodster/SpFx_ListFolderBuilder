@@ -10,7 +10,6 @@
           "location": "ClientSideExtension.ListViewCommandSet.CommandBar",
           "properties": {
             "sampleTextOne": "One item is selected in the list",
-            "sampleTextTwo": "This command is always visible."
           }
         }
       }
@@ -22,7 +21,6 @@
           "location": "ClientSideExtension.ListViewCommandSet.CommandBar",
           "properties": {
             "sampleTextOne": "One item is selected in the list",
-            "sampleTextTwo": "This command is always visible."
           }
         }
       }

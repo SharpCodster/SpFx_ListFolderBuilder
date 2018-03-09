@@ -42,7 +42,6 @@ import * as strings from 'FolderGeneratorCommandSetStrings';
 export interface IFolderGeneratorCommandSetProperties {
   // This is an example; replace with your own properties
   sampleTextOne: string;
-  sampleTextTwo: string;
 }
 
 const LOG_SOURCE: string = 'FolderGeneratorCommandSet';
@@ -70,7 +69,7 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
 
   @override
   public onListViewUpdated(event: IListViewCommandSetListViewUpdatedParameters): void {
-    const compareOneCommand: Command = this.tryGetCommand('COMMAND_1');
+    const compareOneCommand: Command = this.tryGetCommand('CREATE_FOLDERS_CMD');
     if (compareOneCommand) {
       // This command should be hidden unless exactly one row is selected.
       compareOneCommand.visible = event.selectedRows.length === 1;
@@ -85,13 +84,8 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
   @override
   public onExecute(event: IListViewCommandSetExecuteEventParameters): void {
     switch (event.itemId) {
-      case 'COMMAND_1':
+      case 'CREATE_FOLDERS_CMD':
         this.CheckListExistance();
-        break;
-      case 'COMMAND_2':
-        pnp.sp.web.lists.getByTitle(this.libraryName).get().then((lista:List) => {
-          this.AssignSecurityToFolders(lista);
-        });
         break;
       default:
         throw new Error('Unknown command');
@@ -174,6 +168,7 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
 
                 batchSecurities.execute().then(d => { 
                   console.log("End sercurity assignemnts"); 
+                  Dialog.alert("Done"); 
                 });
               });
             });
