@@ -1,4 +1,8 @@
-import pnp, { List, ListEnsureResult, ItemAddResult, FieldAddResult, FolderAddResult, ListAddResult, PermissionKind, Item, Items } from "sp-pnp-js";
+import pnp, { 
+  List, 
+  ListEnsureResult, 
+  FolderAddResult
+} from "sp-pnp-js";
 
 import { 
   override 
@@ -95,43 +99,39 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
   }
 
   private CheckListExistance() : void {
-    this.context.spHttpClient.get(
-      this.context.pageContext.web.absoluteUrl + `/_api/web/lists/GetByTitle('${this.libraryName}')`, SPHttpClient.configurations.v1)
-      .then((response: SPHttpClientResponse) => {
-        response.json().then((listObject:any) => {    
-          if (listObject.hasOwnProperty("error") && listObject.error.code == "-1, System.ArgumentException") {
-            this.CreateLibrary();
-          } else {
-            Dialog.alert(`The List "${this.libraryName}" alredy exists.`);
-          }
-        });
-      }); 
+    this.context.spHttpClient.get(this.context.pageContext.web.absoluteUrl + `/_api/web/lists/GetByTitle('${this.libraryName}')`, 
+    SPHttpClient.configurations.v1).then((response: SPHttpClientResponse) => {
+      response.json().then((listObject:any) => {    
+        if (listObject.hasOwnProperty("error") && listObject.error.code == "-1, System.ArgumentException") {
+          this.CreateLibrary();
+        } else {
+          Dialog.alert(`The List "${this.libraryName}" alredy exists.`);
+        }
+      });
+    }); 
   }
 
   private CreateLibrary() : void {
-    pnp.sp.web.lists.ensure(this.libraryName, "A document library", 101).then(
-      (value: ListEnsureResult) => { 
-        console.log(`List ${this.libraryName} created`); 
-        if (value.created) {
-          let batch = pnp.sp.web.createBatch();
+    pnp.sp.web.lists.ensure(this.libraryName, "A document library", 101).then((value: ListEnsureResult) => { 
+      console.log(`List ${this.libraryName} created`); 
+      if (value.created) {
+        let batch = pnp.sp.web.createBatch();
 
-          pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/First Folder`).then(h => { console.log(`Added: ${h.folder.toUrl()}`); });
-          pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/Second Folder`).then(h => { console.log(`Added: ${h.folder.toUrl()}`); });
-          pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/First Folder/ComplexFolder`).then(h => { console.log(`Added: ${h.folder.toUrl()}`); });
-          pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/First Folder/ComplexFolder Revenge`).then(h => { console.log(`Added: ${h.folder.toUrl()}`); });
-          pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/First Folder/ComplexFolder/Sticazzi`).then(h => { console.log(`Added: ${h.folder.toUrl()}`); });
+        pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/First Folder`).then((h:FolderAddResult) => { console.log(`Added: ${h.folder.toUrl()}`); });
+        pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/Second Folder`).then((h:FolderAddResult) => { console.log(`Added: ${h.folder.toUrl()}`); });
+        pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/First Folder/ComplexFolder`).then((h:FolderAddResult) => { console.log(`Added: ${h.folder.toUrl()}`); });
+        pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/First Folder/ComplexFolder Revenge`).then((h:FolderAddResult) => { console.log(`Added: ${h.folder.toUrl()}`); });
+        pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/First Folder/ComplexFolder/Sticazzi`).then((h:FolderAddResult) => { console.log(`Added: ${h.folder.toUrl()}`); });
 
-          batch.execute().then(d => { 
-            console.log("Created All Folders");
-            this.AssignSecurityToFolders(value.list);
-          });
-        } else {
-          Dialog.alert(`The List "${this.libraryName}" has a problem.`);
-        }
-      }, 
-      (error: any) => { 
-        console.log(error);
-      });
+        batch.execute().then(d => { 
+          console.log("Created All Folders");
+          this.AssignSecurityToFolders(value.list);
+        });
+      } else {
+        Dialog.alert(`The List "${this.libraryName}" has a problem.`);
+      }
+    }, 
+    (error: any) => { console.log(error); });
   }
 
   private AssignSecurityToFolders(lista:List) : void {
