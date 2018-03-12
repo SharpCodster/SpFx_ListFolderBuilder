@@ -1,7 +1,9 @@
 import pnp, { 
   List, 
+  Field,
   ListEnsureResult, 
-  FolderAddResult
+  FolderAddResult,
+  TypedHash
 } from "sp-pnp-js";
 
 import { 
@@ -33,6 +35,7 @@ import {
 } from '@microsoft/sp-http';
 
 import * as strings from 'FolderGeneratorCommandSetStrings';
+import { SiteUser } from "sp-pnp-js/lib/sharepoint/siteusers";
 
 /**
  * If your command set uses the ClientSideComponentProperties JSON input,
@@ -51,6 +54,9 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
   private listId:string;
   private selectedItemId:string; 
   private libraryName:string;
+  private libraryUrl:string;
+  private salesman:string;
+  private salesmanGroup:string;
 
   @override
   public onInit(): Promise<void> {
@@ -72,13 +78,49 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
     const compareOneCommand: Command = this.tryGetCommand('CREATE_FOLDERS_CMD');
     if (compareOneCommand) {
       // This command should be hidden unless exactly one row is selected.
-      compareOneCommand.visible = event.selectedRows.length === 1;
+      compareOneCommand.visible = this.context.pageContext.list.title == "Clienti" 
+        && event.selectedRows.length === 1;
 
       if (compareOneCommand.visible) {
         this.listId =  this.context.pageContext.list.id.toString();
         this.libraryName = event.selectedRows[0].getValueByName("Title");
+        this.libraryUrl = this.GetListUrl(this.libraryName);
+        this.selectedItemId = event.selectedRows[0].getValueByName("ID");
+        let sg:any[] = event.selectedRows[0].getValueByName("Venditore");
+        this.salesman = sg[0].title.replace(" ", ".") + "@teorema.net";
+        
+        pnp.sp.web.siteUsers.getByEmail(this.salesman).groups.get().then((groups:any[]) => {
+          groups.forEach((group) => {
+            console.log(`The User [${this.salesman}] is in group [${group.LoginName}]`);
+            let regex : RegExp = /SG_[0-9]+/g;
+            let regex1 : RegExp = /SG\sArea\s[\w\s\d]+/g;
+            if (regex1.test(group.LoginName)) {
+              this.salesmanGroup = group.LoginName;
+              console.log(`Match ${group.LoginName}`);
+            }
+          });
+        });
+
+        pnp.sp.web.lists.getById(this.listId).items.getById(parseInt(this.selectedItemId)).fieldValuesForEdit.get().then(gu => {
+          console.log("ddd");
+        });
       }
     }
+  }
+
+  private GetListUrl(librarytitle:string) : string {
+    return librarytitle
+          .replace("\"", "")
+          .replace(" ", "")
+          .replace(".", "")
+          .replace("*", "")
+          .replace(":", "")
+          .replace("<", "")
+          .replace(">", "")
+          .replace("?", "")
+          .replace("/", "")
+          .replace("\\", "")
+          .replace("|", "");
   }
 
   @override
@@ -109,13 +151,14 @@ export default class FolderGeneratorCommandSet extends BaseListViewCommandSet<IF
     pnp.sp.web.lists.ensure(this.libraryName, "A document library", 101).then((value: ListEnsureResult) => { 
       console.log(`List ${this.libraryName} created`); 
       if (value.created) {
+
         let batch = pnp.sp.web.createBatch();
 
         pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/First Folder`).then((h:FolderAddResult) => { console.log(`Added: ${h.folder.toUrl()}`); });
         pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/Second Folder`).then((h:FolderAddResult) => { console.log(`Added: ${h.folder.toUrl()}`); });
         pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/First Folder/ComplexFolder`).then((h:FolderAddResult) => { console.log(`Added: ${h.folder.toUrl()}`); });
         pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/First Folder/ComplexFolder Revenge`).then((h:FolderAddResult) => { console.log(`Added: ${h.folder.toUrl()}`); });
-        pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/First Folder/ComplexFolder/Sticazzi`).then((h:FolderAddResult) => { console.log(`Added: ${h.folder.toUrl()}`); });
+        pnp.sp.web.folders.inBatch(batch).add(`${this.libraryName}/First Folder/ComplexFolder/SubFolder`).then((h:FolderAddResult) => { console.log(`Added: ${h.folder.toUrl()}`); });
 
         batch.execute().then(d => { 
           console.log("Created All Folders");
